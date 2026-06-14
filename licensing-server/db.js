@@ -1,29 +1,40 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+const { Pool } = require('pg');
+require('dotenv').config();
 
-const dbPath = path.join(__dirname, 'licensing.db');
-const db = new Database(dbPath);
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/quicksell',
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
-// Enable WAL mode
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+// We need to initialize the tables
+const initDb = async () => {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS licenses (
+        id VARCHAR(255) PRIMARY KEY,
+        license_key VARCHAR(255) UNIQUE NOT NULL,
+        shop_name VARCHAR(255) NOT NULL,
+        owner_name VARCHAR(255) NOT NULL,
+        status VARCHAR(50) DEFAULT 'active',
+        expiry_date TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_licenses_key ON licenses(license_key);
+    `);
+    console.log('✅ PostgreSQL Database connected and verified.');
+  } catch (err) {
+    console.error('❌ Database initialization error:', err);
+  } finally {
+    client.release();
+  }
+};
 
-// Create tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS licenses (
-    id TEXT PRIMARY KEY,
-    license_key TEXT UNIQUE NOT NULL,
-    shop_name TEXT NOT NULL,
-    owner_name TEXT NOT NULL,
-    status TEXT DEFAULT 'active',
-    expiry_date DATETIME NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
+initDb();
 
-// Create index
-db.exec(`
-  CREATE INDEX IF NOT EXISTS idx_licenses_key ON licenses(license_key);
-`);
-
-module.exports = db;
+module.exports = {
+  query: (text, params) => pool.query(text, params),
+};

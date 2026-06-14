@@ -24,19 +24,17 @@ function requireAdmin(req, res, next) {
 }
 
 // Generate unique license key in format QS-XXXX-XXXX
-function generateUniqueKey() {
+async function generateUniqueKey() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   const genSegment = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
   
   let key;
   let isUnique = false;
   
-  const checkStmt = db.prepare('SELECT 1 FROM licenses WHERE license_key = ?');
-  
   while (!isUnique) {
     key = `QS-${genSegment()}-${genSegment()}`;
-    const row = checkStmt.get(key);
-    if (!row) {
+    const result = await db.query('SELECT 1 FROM licenses WHERE license_key = $1', [key]);
+    if (result.rows.length === 0) {
       isUnique = true;
     }
   }
@@ -58,7 +56,7 @@ function signResponse(status, expiry, licenseKey) {
 // ================= PUBLIC ROUTE =================
 
 // GET /api/check - Checked periodically by POS clients
-app.get('/api/check', (req, res) => {
+app.get('/api/check', async (req, res) => {
   const { license_key } = req.query;
   if (!license_key) {
     return res.status(400).json({ error: 'Missing license_key parameter' });
@@ -71,7 +69,8 @@ app.get('/api/check', (req, res) => {
   }
 
   try {
-    const license = db.prepare('SELECT * FROM licenses WHERE license_key = ?').get(sanitizedKey);
+    const result = await db.query('SELECT * FROM licenses WHERE license_key = $1', [sanitizedKey]);
+    const license = result.rows[0];
     
     if (!license) {
       return res.status(404).json({ status: 'unlicensed', error: 'License key not found' });
@@ -84,7 +83,7 @@ app.get('/api/check', (req, res) => {
 
     if (status === 'active' && currentTime > expiryTime) {
       status = 'expired';
-      db.prepare('UPDATE licenses SET status = ? WHERE id = ?').run(status, license.id);
+      await db.query('UPDATE licenses SET status = $1 WHERE id = $2', [status, license.id]);
     }
 
     const expiry = license.expiry_date;
@@ -115,10 +114,10 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 // GET /api/admin/licenses - List all keys
-app.get('/api/admin/licenses', requireAdmin, (req, res) => {
+app.get('/api/admin/licenses', requireAdmin, async (req, res) => {
   try {
-    const rows = db.prepare('SELECT * FROM licenses ORDER BY created_at DESC').all();
-    res.json(rows);
+    const result = await db.query('SELECT * FROM licenses ORDER BY created_at DESC');
+    res.json(result.rows);
   } catch (err) {
     console.error('Error fetching licenses:', err);
     res.status(500).json({ error: 'Failed to retrieve licenses' });
@@ -126,27 +125,27 @@ app.get('/api/admin/licenses', requireAdmin, (req, res) => {
 });
 
 // POST /api/admin/licenses - Generate new license key
-app.post('/api/admin/licenses', requireAdmin, (req, res) => {
+app.post('/api/admin/licenses', requireAdmin, async (req, res) => {
   const { shopName, ownerName, months } = req.body;
   if (!shopName || !ownerName) {
     return res.status(400).json({ error: 'shopName and ownerName are required' });
   }
 
   const durationMonths = parseInt(months) || 6;
-  const key = generateUniqueKey();
+  const key = await generateUniqueKey();
   const id = crypto.randomUUID();
   
   // Calculate expiry date: current time + durationMonths * 30 days
   const expiryDate = new Date(Date.now() + durationMonths * 30 * 24 * 60 * 60 * 1000).toISOString();
 
   try {
-    db.prepare(`
+    await db.query(`
       INSERT INTO licenses (id, license_key, shop_name, owner_name, status, expiry_date)
-      VALUES (?, ?, ?, ?, 'active', ?)
-    `).run(id, key, shopName.trim(), ownerName.trim(), expiryDate);
+      VALUES ($1, $2, $3, $4, 'active', $5)
+    `, [id, key, shopName.trim(), ownerName.trim(), expiryDate]);
 
-    const newRow = db.prepare('SELECT * FROM licenses WHERE id = ?').get(id);
-    res.json(newRow);
+    const newRow = await db.query('SELECT * FROM licenses WHERE id = $1', [id]);
+    res.json(newRow.rows[0]);
   } catch (err) {
     console.error('Error generating license:', err);
     res.status(500).json({ error: 'Failed to generate license' });
@@ -154,7 +153,7 @@ app.post('/api/admin/licenses', requireAdmin, (req, res) => {
 });
 
 // PUT /api/admin/licenses/:id/status - Toggle active/suspended
-app.put('/api/admin/licenses/:id/status', requireAdmin, (req, res) => {
+app.put('/api/admin/licenses/:id/status', requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
@@ -163,12 +162,12 @@ app.put('/api/admin/licenses/:id/status', requireAdmin, (req, res) => {
   }
 
   try {
-    const check = db.prepare('SELECT 1 FROM licenses WHERE id = ?').get(id);
-    if (!check) return res.status(404).json({ error: 'License not found' });
+    const check = await db.query('SELECT 1 FROM licenses WHERE id = $1', [id]);
+    if (check.rows.length === 0) return res.status(404).json({ error: 'License not found' });
 
-    db.prepare('UPDATE licenses SET status = ? WHERE id = ?').run(status, id);
-    const updated = db.prepare('SELECT * FROM licenses WHERE id = ?').get(id);
-    res.json(updated);
+    await db.query('UPDATE licenses SET status = $1 WHERE id = $2', [status, id]);
+    const updated = await db.query('SELECT * FROM licenses WHERE id = $1', [id]);
+    res.json(updated.rows[0]);
   } catch (err) {
     console.error('Error updating status:', err);
     res.status(500).json({ error: 'Failed to update license status' });
@@ -176,22 +175,23 @@ app.put('/api/admin/licenses/:id/status', requireAdmin, (req, res) => {
 });
 
 // PUT /api/admin/licenses/:id/renew - Extend license (e.g. +6 Months)
-app.put('/api/admin/licenses/:id/renew', requireAdmin, (req, res) => {
+app.put('/api/admin/licenses/:id/renew', requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { months } = req.body;
   const durationMonths = parseInt(months) || 6;
 
   try {
-    const license = db.prepare('SELECT * FROM licenses WHERE id = ?').get(id);
+    const licenseResult = await db.query('SELECT * FROM licenses WHERE id = $1', [id]);
+    const license = licenseResult.rows[0];
     if (!license) return res.status(404).json({ error: 'License not found' });
 
     const currentExpiry = new Date(license.expiry_date).getTime();
     const baseTime = Math.max(Date.now(), currentExpiry);
     const newExpiry = new Date(baseTime + durationMonths * 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    db.prepare("UPDATE licenses SET expiry_date = ?, status = 'active' WHERE id = ?").run(newExpiry, id);
-    const updated = db.prepare('SELECT * FROM licenses WHERE id = ?').get(id);
-    res.json(updated);
+    await db.query("UPDATE licenses SET expiry_date = $1, status = 'active' WHERE id = $2", [newExpiry, id]);
+    const updated = await db.query('SELECT * FROM licenses WHERE id = $1', [id]);
+    res.json(updated.rows[0]);
   } catch (err) {
     console.error('Error renewing license:', err);
     res.status(500).json({ error: 'Failed to renew license' });
@@ -199,13 +199,13 @@ app.put('/api/admin/licenses/:id/renew', requireAdmin, (req, res) => {
 });
 
 // DELETE /api/admin/licenses/:id - Delete a key
-app.delete('/api/admin/licenses/:id', requireAdmin, (req, res) => {
+app.delete('/api/admin/licenses/:id', requireAdmin, async (req, res) => {
   const { id } = req.params;
   try {
-    const check = db.prepare('SELECT 1 FROM licenses WHERE id = ?').get(id);
-    if (!check) return res.status(404).json({ error: 'License not found' });
+    const check = await db.query('SELECT 1 FROM licenses WHERE id = $1', [id]);
+    if (check.rows.length === 0) return res.status(404).json({ error: 'License not found' });
 
-    db.prepare('DELETE FROM licenses WHERE id = ?').run(id);
+    await db.query('DELETE FROM licenses WHERE id = $1', [id]);
     res.json({ success: true });
   } catch (err) {
     console.error('Error deleting license:', err);
