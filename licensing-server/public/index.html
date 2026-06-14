@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickSell — Super Admin Panel</title>
+  <!-- DM Sans & Inter Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            heading: ['DM Sans', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #f5f5f7;
+      color: #111827;
+      position: relative;
+      z-index: 1;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background:
+        radial-gradient(ellipse 70% 50% at 10% 0%, rgba(99, 102, 241, 0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 90% 90%, rgba(16, 185, 129, 0.04) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: -1;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(0, 0, 0, 0.07);
+    }
+    /* Hide scrollbars but keep functionality */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    /* Animations */
+    @keyframes pulse-soft {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.02); }
+    }
+    .pulse-danger {
+      animation: pulse-soft 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="font-sans min-h-screen flex flex-col selection:bg-violet-500 selection:text-gray-900">
+
+  <!-- ================= TOAST NOTIFICATION ================= -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl translate-y-10 opacity-0 transition-all duration-300 pointer-events-none glass-card border border-violet-500/20">
+    <span id="toast-icon" class="text-lg"></span>
+    <span id="toast-message" class="text-sm font-medium text-gray-800"></span>
+  </div>
+
+  <!-- ================= LOGIN STATE CONTAINER ================= -->
+  <div id="login-container" class="flex-1 flex items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full rounded-2xl p-8 shadow-2xl border border-gray-200 relative overflow-hidden">
+      <!-- Glow effect -->
+      <div class="absolute -top-16 -left-16 w-32 h-32 bg-violet-600/15 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-16 -right-16 w-32 h-32 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-gray-900 shadow-lg shadow-indigo-500/20 mb-4">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <h2 class="text-2xl font-bold font-heading tracking-tight text-gray-900">Super Admin Access</h2>
+        <p class="text-gray-500 text-sm mt-1">Authenticate to manage QuickSell licenses</p>
+      </div>
+
+      <form id="login-form" class="space-y-6">
+        <div>
+          <label for="admin-password" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Super Admin Password</label>
+          <input
+            id="admin-password"
+            type="password"
+            placeholder="••••••••••••"
+            class="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all text-center tracking-widest text-lg"
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-gray-900 font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] flex items-center justify-center gap-2"
+        >
+          <span>Authenticate</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+          </svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= DASHBOARD CONTAINER (HIDDEN BY DEFAULT) ================= -->
+  <div id="dashboard-container" class="hidden flex-1 flex flex-col">
+    <!-- Header -->
+    <header class="glass-card sticky top-0 z-40 border-b border-gray-200 py-4 px-6 md:px-8">
+      <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-violet-600 to-indigo-600 text-gray-900 flex items-center justify-center font-bold font-heading text-lg shadow-md shadow-indigo-500/10">
+            QS
+          </div>
+          <div>
+            <h1 class="text-lg font-bold font-heading text-gray-900 tracking-wide leading-tight flex items-center gap-2">
+              QuickSell <span class="text-xs bg-violet-600/20 text-violet-400 font-semibold px-2 py-0.5 rounded-full border border-violet-500/10">Super Admin</span>
+            </h1>
+            <p class="text-xs text-gray-500">Central Licensing Portal</p>
+          </div>
+        </div>
+
+        <button
+          id="logout-btn"
+          class="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-black/5 hover:bg-black/10 rounded-lg transition-all border border-gray-200"
+        >
+          Sign Out
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 space-y-6">
+
+      <!-- Statistics KPI Cards -->
+      <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="glass-card rounded-2xl p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group">
+          <div class="absolute top-0 right-0 w-24 h-24 bg-violet-600/5 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform duration-500"></div>
+          <div>
+            <div class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Keys</div>
+            <div id="stat-total" class="text-3xl font-extrabold font-heading text-gray-900 mt-1">0</div>
+          </div>
+          <div class="text-[10px] text-gray-600 mt-3 font-medium">All generated retail subscriptions</div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group">
+          <div class="absolute top-0 right-0 w-24 h-24 bg-emerald-600/5 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform duration-500"></div>
+          <div>
+            <div class="text-xs font-bold text-gray-500 uppercase tracking-wider">Active Status</div>
+            <div id="stat-active" class="text-3xl font-extrabold font-heading text-emerald-400 mt-1">0</div>
+          </div>
+          <div class="text-[10px] text-gray-600 mt-3 font-medium">Unlocked shop POS registers</div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group">
+          <div class="absolute top-0 right-0 w-24 h-24 bg-rose-600/5 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform duration-500"></div>
+          <div>
+            <div class="text-xs font-bold text-gray-500 uppercase tracking-wider">Suspended Keys</div>
+            <div id="stat-suspended" class="text-3xl font-extrabold font-heading text-rose-500 mt-1">0</div>
+          </div>
+          <div class="text-[10px] text-gray-600 mt-3 font-medium">Merchant checkouts blocked</div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5 flex flex-col justify-between shadow-lg relative overflow-hidden group">
+          <div class="absolute top-0 right-0 w-24 h-24 bg-amber-600/5 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform duration-500"></div>
+          <div>
+            <div class="text-xs font-bold text-gray-500 uppercase tracking-wider">Expired Keys</div>
+            <div id="stat-expired" class="text-3xl font-extrabold font-heading text-amber-500 mt-1">0</div>
+          </div>
+          <div class="text-[10px] text-gray-600 mt-3 font-medium">Overdue license keys</div>
+        </div>
+      </section>
+
+      <!-- Key Generator and Keys Table Split -->
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        
+        <!-- Left: Key Generator Form -->
+        <div class="glass-card rounded-2xl p-6 shadow-xl border border-gray-200 relative overflow-hidden">
+          <div class="absolute -top-12 -left-12 w-24 h-24 bg-violet-600/10 rounded-full blur-2xl pointer-events-none"></div>
+          <h3 class="text-md font-bold font-heading text-gray-900 mb-5 flex items-center gap-2">
+            <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+            Generate License Key
+          </h3>
+
+          <form id="generator-form" class="space-y-4 text-left">
+            <div>
+              <label for="shop-name" class="block text-xs font-semibold text-gray-600 uppercase mb-2">Shop Name *</label>
+              <input
+                id="shop-name"
+                type="text"
+                placeholder="e.g. Modern Clothing Boutique"
+                class="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all text-sm"
+                required
+              />
+            </div>
+
+            <div>
+              <label for="owner-name" class="block text-xs font-semibold text-gray-600 uppercase mb-2">Owner Name *</label>
+              <input
+                id="owner-name"
+                type="text"
+                placeholder="e.g. Rajesh Kumar"
+                class="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all text-sm"
+                required
+              />
+            </div>
+
+            <div>
+              <label for="duration" class="block text-xs font-semibold text-gray-600 uppercase mb-2">Duration Limit</label>
+              <select
+                id="duration"
+                class="w-full px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all text-sm cursor-pointer"
+              >
+                <option value="6">6 Months (Default)</option>
+                <option value="12">12 Months (1 Year)</option>
+                <option value="1">1 Month (Trial)</option>
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              class="w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-gray-900 font-semibold rounded-xl transition-all shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-[0.98] mt-2 flex items-center justify-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Create License Key</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Right: Licenses Database Table -->
+        <div class="glass-card rounded-2xl p-6 shadow-xl border border-gray-200 lg:col-span-2 space-y-4">
+          <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+            <h3 class="text-md font-bold font-heading text-gray-900 flex items-center gap-2">
+              <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Active Subscriptions Database
+            </h3>
+            
+            <!-- Search bar -->
+            <div class="relative max-w-xs w-full">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </span>
+              <input
+                id="search-input"
+                type="text"
+                placeholder="Search keys, shops, owners..."
+                class="w-full pl-9 pr-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all text-xs"
+              />
+            </div>
+          </div>
+
+          <!-- Table Wrapper -->
+          <div class="overflow-x-auto rounded-xl border border-gray-200">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-gray-50 text-[10px] font-bold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                  <th class="px-5 py-3.5">License Key</th>
+                  <th class="px-5 py-3.5">Shop & Owner</th>
+                  <th class="px-5 py-3.5">Status</th>
+                  <th class="px-5 py-3.5">Expiration</th>
+                  <th class="px-5 py-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="licenses-list" class="divide-y divide-white/5 text-xs">
+                <!-- Dynamic Content Injection -->
+                <tr>
+                  <td colspan="5" class="px-5 py-12 text-center text-gray-500">Loading licenses database...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Script logic -->
+  <script>
+    const API = '/api';
+    let token = localStorage.getItem('super_admin_token') || '';
+    let licenses = [];
+
+    // Elements
+    const loginContainer = document.getElementById('login-container');
+    const dashboardContainer = document.getElementById('dashboard-container');
+    const loginForm = document.getElementById('login-form');
+    const adminPassword = document.getElementById('admin-password');
+    const logoutBtn = document.getElementById('logout-btn');
+    const searchInput = document.getElementById('search-input');
+    const generatorForm = document.getElementById('generator-form');
+    const shopNameInput = document.getElementById('shop-name');
+    const ownerNameInput = document.getElementById('owner-name');
+    const durationSelect = document.getElementById('duration');
+    const licensesList = document.getElementById('licenses-list');
+
+    // KPI Elements
+    const statTotal = document.getElementById('stat-total');
+    const statActive = document.getElementById('stat-active');
+    const statSuspended = document.getElementById('stat-suspended');
+    const statExpired = document.getElementById('stat-expired');
+
+    // Initialize Page State
+    if (token) {
+      showDashboard();
+    } else {
+      showLogin();
+    }
+
+    function showLogin() {
+      loginContainer.classList.remove('hidden');
+      dashboardContainer.classList.add('hidden');
+    }
+
+    function showDashboard() {
+      loginContainer.classList.add('hidden');
+      dashboardContainer.classList.remove('hidden');
+      fetchLicenses();
+    }
+
+    // Login Submission
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = adminPassword.value;
+
+      try {
+        const res = await fetch(`${API}/admin/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          token = data.token;
+          localStorage.setItem('super_admin_token', token);
+          adminPassword.value = '';
+          showToast('🔒 Welcome back, Super Admin!', 'success');
+          showDashboard();
+        } else {
+          showToast('❌ Incorrect administrator password', 'error');
+        }
+      } catch {
+        showToast('❌ Server error during login', 'error');
+      }
+    });
+
+    // Logout
+    logoutBtn.addEventListener('click', () => {
+      token = '';
+      localStorage.removeItem('super_admin_token');
+      showToast('🔑 Successfully signed out', 'success');
+      showLogin();
+    });
+
+    // Toast Functionality
+    function showToast(message, type = 'success') {
+      const toastEl = document.getElementById('toast');
+      const iconEl = document.getElementById('toast-icon');
+      const msgEl = document.getElementById('toast-message');
+
+      iconEl.textContent = type === 'success' ? '✅' : '⚠️';
+      msgEl.textContent = message;
+
+      toastEl.classList.remove('translate-y-10', 'opacity-0', 'pointer-events-none');
+      toastEl.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toastEl.classList.add('translate-y-10', 'opacity-0', 'pointer-events-none');
+        toastEl.classList.remove('translate-y-0', 'opacity-100');
+      }, 3000);
+    }
+
+    // Fetch license database
+    async function fetchLicenses() {
+      try {
+        const res = await fetch(`${API}/admin/licenses`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 401) {
+          // Token expired/invalid
+          token = '';
+          localStorage.removeItem('super_admin_token');
+          showLogin();
+          return;
+        }
+
+        if (res.ok) {
+          licenses = await res.json();
+          renderDashboard();
+        }
+      } catch (err) {
+        showToast('❌ Connection to server failed', 'error');
+      }
+    }
+
+    // Generate New License
+    generatorForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const shopName = shopNameInput.value.trim();
+      const ownerName = ownerNameInput.value.trim();
+      const months = durationSelect.value;
+
+      try {
+        const res = await fetch(`${API}/admin/licenses`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ shopName, ownerName, months })
+        });
+
+        if (res.ok) {
+          showToast('🔑 Key generated successfully!', 'success');
+          shopNameInput.value = '';
+          ownerNameInput.value = '';
+          fetchLicenses();
+        } else {
+          showToast('❌ Failed to generate license', 'error');
+        }
+      } catch {
+        showToast('❌ Generator script offline', 'error');
+      }
+    });
+
+    // Copy to clipboard helper
+    function copyKey(key) {
+      navigator.clipboard.writeText(key)
+        .then(() => showToast('📋 Copied to clipboard!', 'success'))
+        .catch(() => showToast('❌ Failed to copy key', 'error'));
+    }
+
+    // Toggle status (Active vs Suspend)
+    async function toggleStatus(id, currentStatus) {
+      const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+      try {
+        const res = await fetch(`${API}/admin/licenses/${id}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+
+        if (res.ok) {
+          showToast(`🔒 License key status is now ${newStatus.toUpperCase()}`, 'success');
+          fetchLicenses();
+        }
+      } catch {
+        showToast('❌ Failed to update key status', 'error');
+      }
+    }
+
+    // Renew License (+6 Months)
+    async function renewLicense(id, shopName) {
+      if (!confirm(`Extend subscription for "${shopName}" by 6 Months?`)) return;
+      try {
+        const res = await fetch(`${API}/admin/licenses/${id}/renew`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ months: 6 })
+        });
+
+        if (res.ok) {
+          showToast(`⚡ ${shopName}'s license extended (+6 Months)`, 'success');
+          fetchLicenses();
+        }
+      } catch {
+        showToast('❌ Failed to extend subscription', 'error');
+      }
+    }
+
+    // Delete License
+    async function deleteLicense(id, shopName, key) {
+      if (!confirm(`⚠️ WARNING: Permanently delete key ${key} for "${shopName}"?`)) return;
+      try {
+        const res = await fetch(`${API}/admin/licenses/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+          showToast(`🗑️ License ${key} removed`, 'success');
+          fetchLicenses();
+        }
+      } catch {
+        showToast('❌ Failed to delete key', 'error');
+      }
+    }
+
+    // Search trigger
+    searchInput.addEventListener('input', () => {
+      renderLicensesTable(searchInput.value.toLowerCase().trim());
+    });
+
+    // Render Stats and Table
+    function renderDashboard() {
+      // Calculate KPIs
+      const total = licenses.length;
+      const active = licenses.filter(l => l.status === 'active').length;
+      const suspended = licenses.filter(l => l.status === 'suspended').length;
+      const expired = licenses.filter(l => l.status === 'expired').length;
+
+      statTotal.textContent = total;
+      statActive.textContent = active;
+      statSuspended.textContent = suspended;
+      statExpired.textContent = expired;
+
+      renderLicensesTable();
+    }
+
+    // Render licenses table list
+    function renderLicensesTable(filterQuery = '') {
+      licensesList.innerHTML = '';
+      const filtered = licenses.filter(l => {
+        if (!filterQuery) return true;
+        return (
+          l.license_key.toLowerCase().includes(filterQuery) ||
+          l.shop_name.toLowerCase().includes(filterQuery) ||
+          l.owner_name.toLowerCase().includes(filterQuery)
+        );
+      });
+
+      if (filtered.length === 0) {
+        licensesList.innerHTML = `
+          <tr>
+            <td colspan="5" class="px-5 py-8 text-center text-gray-500">No records found matching query.</td>
+          </tr>
+        `;
+        return;
+      }
+
+      filtered.forEach(l => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50 transition-colors group';
+
+        const expDate = new Date(l.expiry_date);
+        const expFormatted = expDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        
+        let statusBadge = '';
+        if (l.status === 'active') {
+          statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase">Active</span>';
+        } else if (l.status === 'suspended') {
+          statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20 uppercase pulse-danger">Suspended</span>';
+        } else {
+          statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase">Expired</span>';
+        }
+
+        tr.innerHTML = `
+          <td class="px-5 py-4 whitespace-nowrap">
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-bold text-gray-900 uppercase tracking-wider">${l.license_key}</span>
+              <button 
+                onclick="copyKey('${l.license_key}')" 
+                class="text-gray-500 hover:text-gray-900 hover:bg-black/5 p-1 rounded transition-all active:scale-90 opacity-0 group-hover:opacity-100"
+                title="Copy Key"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+              </button>
+            </div>
+          </td>
+          <td class="px-5 py-4 whitespace-nowrap">
+            <div class="font-semibold text-gray-800">${l.shop_name}</div>
+            <div class="text-[10px] text-gray-500">${l.owner_name}</div>
+          </td>
+          <td class="px-5 py-4 whitespace-nowrap">
+            ${statusBadge}
+          </td>
+          <td class="px-5 py-4 whitespace-nowrap text-gray-600 font-medium">
+            ${expFormatted}
+          </td>
+          <td class="px-5 py-4 whitespace-nowrap text-right">
+            <div class="flex items-center justify-end gap-2">
+              <button 
+                onclick="renewLicense('${l.id}', '${l.shop_name}')"
+                class="px-2.5 py-1.5 text-[10px] font-bold bg-violet-600/20 hover:bg-violet-600 text-violet-400 hover:text-gray-900 rounded-lg border border-violet-500/10 transition-all"
+                title="Renew key (+6 Months)"
+              >
+                +6m Renew
+              </button>
+              
+              <button 
+                onclick="toggleStatus('${l.id}', '${l.status}')"
+                class="px-2.5 py-1.5 text-[10px] font-bold ${l.status === 'active' ? 'bg-amber-500/10 hover:bg-amber-500 text-amber-400' : 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400'} hover:text-black rounded-lg border border-gray-200 transition-all"
+              >
+                ${l.status === 'active' ? 'Suspend' : 'Activate'}
+              </button>
+              
+              <button 
+                onclick="deleteLicense('${l.id}', '${l.shop_name}', '${l.license_key}')"
+                class="p-1.5 text-gray-500 hover:text-rose-400 hover:bg-rose-500/5 rounded-lg border border-transparent hover:border-rose-500/10 transition-all active:scale-95"
+                title="Delete Key"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </td>
+        `;
+
+        licensesList.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>
