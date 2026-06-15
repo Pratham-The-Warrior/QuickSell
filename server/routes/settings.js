@@ -232,7 +232,13 @@ async function verifyAndUpdateLicense(licenseKey, serverUrl) {
     return { status: 'tampered', lastChecked: new Date().toISOString(), expiry: null };
   }
 
-  const checkResult = await performLicenseCheck(licenseKey, serverUrl);
+  let activeServerUrl = serverUrl;
+  if (!activeServerUrl) {
+    const urlRow = db.prepare("SELECT value FROM settings WHERE key = 'licenseServerUrl'").get();
+    activeServerUrl = urlRow ? urlRow.value : null;
+  }
+
+  const checkResult = await performLicenseCheck(licenseKey, activeServerUrl);
   
   let status = checkResult.status;
   let lastChecked = checkResult.checkedAt;
@@ -303,6 +309,9 @@ async function verifyAndUpdateLicense(licenseKey, serverUrl) {
   // Persist to database
   upsert.run('licenseKey', licenseKey || '');
   upsert.run('licenseStatus', status);
+  if (activeServerUrl) {
+    upsert.run('licenseServerUrl', activeServerUrl);
+  }
   if (lastChecked) {
     upsert.run('licenseLastChecked', lastChecked);
   }
@@ -317,10 +326,9 @@ async function verifyAndUpdateLicense(licenseKey, serverUrl) {
   return { status, lastChecked, expiry: activeExpiry };
 }
 
-// POST /verify-license
 router.post('/verify-license', async (req, res) => {
   try {
-    const { licenseKey } = req.body;
+    const { licenseKey, licenseServerUrl } = req.body;
     
     if (!licenseKey || typeof licenseKey !== 'string' || licenseKey.trim().length === 0) {
       return res.status(400).json({ error: 'Invalid license key' });
@@ -332,7 +340,7 @@ router.post('/verify-license', async (req, res) => {
       return res.status(429).json({ error: 'Too many verification attempts. Please wait and try again.' });
     }
 
-    const result = await verifyAndUpdateLicense(licenseKey);
+    const result = await verifyAndUpdateLicense(licenseKey, licenseServerUrl);
     res.json(result);
   } catch (err) {
     console.error('Error verifying license:', err);

@@ -20,7 +20,7 @@ export default function Billing({ settings }) {
   const [cashReceived, setCashReceived] = useState('');
   const scanInputRef = useRef(null);
 
-  const licenseStatus = settings?.licenseStatus || 'active';
+  const licenseStatus = settings?.licenseStatus || 'unlicensed';
   const isLocked = licenseStatus !== 'active';
 
   // Keep scanner input focused
@@ -156,13 +156,18 @@ export default function Billing({ settings }) {
         body: JSON.stringify(saleData),
       });
 
-      const sale = await res.json();
-      setCompletedSale(sale);
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to record sale');
+      }
+
+      setCompletedSale(data);
       setShowPayment(false);
       setShowReceipt(true);
       showToast('💰 Payment recorded!');
-    } catch {
-      showToast('❌ Failed to record sale', 'error');
+    } catch (err) {
+      showToast(`❌ ${err.message}`, 'error');
     }
   }
 
@@ -575,22 +580,33 @@ export default function Billing({ settings }) {
           </div>
 
           {/* Scanner Input */}
-          <div className="scanner-input-wrapper">
-            <span className="scanner-input-icon" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}>
-              <Search size={20} strokeWidth={1.8} />
-            </span>
-            <input
-              ref={scanInputRef}
-              className={`scanner-input ${cart.length === 0 && !isLocked ? 'scan-pulse' : ''}`}
-              type="text"
-              placeholder={isLocked ? "Checkouts locked. See Settings..." : "Scan barcode or type code..."}
-              value={scanInput}
-              onChange={e => setScanInput(e.target.value)}
-              onKeyDown={handleScan}
-              id="bill-scanner-input"
-              disabled={isLocked}
-              autoFocus={!isLocked}
-            />
+          <div className="scanner-input-wrapper" style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <span className="scanner-input-icon" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-muted)', position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}>
+                <Search size={20} strokeWidth={1.8} />
+              </span>
+              <input
+                ref={scanInputRef}
+                className={`scanner-input ${cart.length === 0 && !isLocked ? 'scan-pulse' : ''}`}
+                type="text"
+                placeholder={isLocked ? "Checkouts locked. See Settings..." : "Scan barcode or type code..."}
+                value={scanInput}
+                onChange={e => setScanInput(e.target.value)}
+                onKeyDown={handleScan}
+                id="bill-scanner-input"
+                disabled={isLocked}
+                autoFocus={!isLocked}
+                style={{ paddingLeft: '40px', width: '100%' }}
+              />
+            </div>
+            <button 
+              className="btn btn-primary" 
+              disabled={!scanInput.trim() || isLocked}
+              onClick={() => handleScan({ key: 'Enter' })}
+              style={{ padding: '0 20px' }}
+            >
+              Add
+            </button>
           </div>
 
           {/* Cart Items */}

@@ -178,8 +178,8 @@ function parseBillResult(ocrData) {
 
 export default function Inventory({ settings }) {
   const navigate = useNavigate();
-  const licenseStatus = settings?.licenseStatus || 'active';
-  const isLocked = licenseStatus === 'suspended' || licenseStatus === 'expired' || licenseStatus === 'expired_offline';
+  const licenseStatus = settings?.licenseStatus || 'unlicensed';
+  const isLocked = licenseStatus !== 'active';
 
   const [tab, setTab] = useState('quick');       // 'quick' | 'scan'
   const [products, setProducts] = useState([]);

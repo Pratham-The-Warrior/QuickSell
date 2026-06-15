@@ -11,8 +11,8 @@ const navItems = [
 export default function Sidebar({ settings }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const licenseStatus = settings?.licenseStatus || 'active';
-  const isLocked = licenseStatus === 'suspended' || licenseStatus === 'expired' || licenseStatus === 'expired_offline';
+  const licenseStatus = settings?.licenseStatus || 'unlicensed';
+  const isLocked = licenseStatus !== 'active';
 
   return (
     <>
@@ -57,10 +57,10 @@ export default function Sidebar({ settings }) {
             }}
             onClick={() => navigate('/setup')}
             role="button"
-            title="License key suspended or expired. Click to view Settings."
+            title="License status inactive. Click to view Settings."
             >
               <Zap size={14} color="var(--danger-500)" style={{ fill: 'var(--danger-500)' }} />
-              <span style={{ fontWeight: 700 }}>License Suspended</span>
+              <span style={{ fontWeight: 700 }}>License Inactive</span>
             </div>
           ) : (
             <div className="glass-card" style={{

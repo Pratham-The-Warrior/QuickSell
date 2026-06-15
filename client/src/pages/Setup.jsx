@@ -9,6 +9,7 @@ export default function Setup({ onComplete, isEdit }) {
   const [upiId, setUpiId] = useState('');
   const [phone, setPhone] = useState('');
   const [licenseKey, setLicenseKey] = useState('');
+  const [licenseServerUrl, setLicenseServerUrl] = useState('');
 
   const [licenseStatus, setLicenseStatus] = useState('unlicensed');
   const [licenseLastChecked, setLicenseLastChecked] = useState('');
@@ -32,6 +33,7 @@ export default function Setup({ onComplete, isEdit }) {
           setUpiId(data.upiId || '');
           setPhone(data.phone || '');
           setLicenseKey(data.licenseKey || '');
+          setLicenseServerUrl(data.licenseServerUrl || '');
 
           setLicenseStatus(data.licenseStatus || 'unlicensed');
           setLicenseLastChecked(data.licenseLastChecked || '');
@@ -49,7 +51,8 @@ export default function Setup({ onComplete, isEdit }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          licenseKey: licenseKey.trim()
+          licenseKey: licenseKey.trim(),
+          licenseServerUrl: licenseServerUrl.trim()
         })
       });
       const data = await res.json();
@@ -89,7 +92,8 @@ export default function Setup({ onComplete, isEdit }) {
           ownerName: ownerName.trim(),
           upiId: upiId.trim(),
           phone: phone.trim(),
-          licenseKey: licenseKey.trim()
+          licenseKey: licenseKey.trim(),
+          licenseServerUrl: licenseServerUrl.trim()
         }),
       });
       const data = await res.json();
@@ -196,6 +200,18 @@ export default function Setup({ onComplete, isEdit }) {
                   placeholder="e.g. QS-XXXX-XXXX"
                   value={licenseKey}
                   onChange={e => setLicenseKey(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginTop: 'var(--space-3)' }}>
+                <label className="form-label" htmlFor="setup-server-url">Licensing Server URL</label>
+                <input
+                  id="setup-server-url"
+                  className="form-input"
+                  type="url"
+                  placeholder="e.g. https://your-server.onrender.com/api/check"
+                  value={licenseServerUrl}
+                  onChange={e => setLicenseServerUrl(e.target.value)}
                 />
               </div>
 
