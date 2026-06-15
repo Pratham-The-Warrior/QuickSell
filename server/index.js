@@ -32,28 +32,7 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
-// Background subscription checker
-const db = require('./db');
-async function runBackgroundLicenseCheck() {
-  try {
-    const keyRow = db.prepare("SELECT value FROM settings WHERE key = 'licenseKey'").get();
-    
-    if (keyRow && keyRow.value) {
-      console.log('🔄 Running background subscription check...');
-      const result = await settingsRouter.verifyAndUpdateLicense(keyRow.value);
-      console.log(`✅ Subscription check result: status = ${result.status}`);
-    } else {
-      console.log('⚠️ No license key configured. POS checkout is currently active but unlicensed.');
-    }
-  } catch (err) {
-    console.error('❌ Background subscription check error:', err);
-  }
-}
 
-// Run 5 seconds after startup
-setTimeout(runBackgroundLicenseCheck, 5000);
-// Periodically check every 12 hours
-setInterval(runBackgroundLicenseCheck, 12 * 60 * 60 * 1000);
 
 // Start server
 const server = app.listen(PORT, () => {

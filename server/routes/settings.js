@@ -37,6 +37,7 @@ router.get('/', (req, res) => {
     rows.forEach(row => {
       settings[row.key] = row.value;
     });
+    settings['licenseStatus'] = 'active';
     res.json(settings);
   } catch (err) {
     console.error('Error fetching settings:', err);
@@ -76,6 +77,7 @@ router.post('/', (req, res) => {
     rows.forEach(row => {
       settings[row.key] = row.value;
     });
+    settings['licenseStatus'] = 'active';
     res.json(settings);
   } catch (err) {
     console.error('Error saving settings:', err);
@@ -162,7 +164,7 @@ async function performLicenseCheck(licenseKey, serverUrl) {
   }
 
   // 2. Perform real check against the licensing server
-  const targetUrl = serverUrl || 'http://localhost:3002/api/check';
+  const targetUrl = serverUrl || 'https://quicksell-7lkq.onrender.com/api/check';
   try {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), 4000);

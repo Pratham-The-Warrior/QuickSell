@@ -20,8 +20,7 @@ export default function Billing({ settings }) {
   const [cashReceived, setCashReceived] = useState('');
   const scanInputRef = useRef(null);
 
-  const licenseStatus = settings?.licenseStatus || 'unlicensed';
-  const isLocked = licenseStatus !== 'active';
+  const isLocked = false;
 
   // Keep scanner input focused
   useEffect(() => {

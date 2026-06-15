@@ -11,8 +11,7 @@ const navItems = [
 export default function Sidebar({ settings }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const licenseStatus = settings?.licenseStatus || 'unlicensed';
-  const isLocked = licenseStatus !== 'active';
+  const isLocked = false;
 
   return (
     <>

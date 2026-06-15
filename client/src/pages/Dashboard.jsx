@@ -11,8 +11,7 @@ const API = '/api';
 
 export default function Dashboard({ settings }) {
   const navigate = useNavigate();
-  const licenseStatus = settings?.licenseStatus || 'unlicensed';
-  const isLocked = licenseStatus !== 'active';
+  const isLocked = false;
   const [today, setToday] = useState({ revenue: 0, transactions: 0, itemsSold: 0 });
   const [monthly, setMonthly] = useState([]);
   const [topItems, setTopItems] = useState([]);

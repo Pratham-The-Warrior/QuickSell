@@ -42,6 +42,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_sales_created_at ON sales(created_at);
 `);
 
+// Force active status for free offline mode
+db.exec(`
+  INSERT INTO settings (key, value) 
+  VALUES ('licenseStatus', 'active') 
+  ON CONFLICT(key) DO UPDATE SET value = 'active';
+`);
+
 // Self-healing migration: Add customer_name to sales table if it doesn't exist
 try {
   db.exec("ALTER TABLE sales ADD COLUMN customer_name TEXT DEFAULT ''");

@@ -63,7 +63,16 @@ export default function Setup({ onComplete, isEdit }) {
       if (data.expiry) {
         setLicenseExpiry(data.expiry);
       }
-      showToast(`License verification successful! Status: ${data.status.toUpperCase()}`);
+      if (data.status === 'active') {
+        showToast('License verification successful! Status: ACTIVE', 'success');
+      } else {
+        const errorMsg = data.status === 'expired_offline' || data.status === 'expired'
+          ? 'License has expired.'
+          : data.status === 'suspended'
+            ? 'License has been suspended.'
+            : 'Invalid license key.';
+        showToast(`Verification failed: ${errorMsg} (Status: ${data.status.toUpperCase()})`, 'error');
+      }
       if (onComplete) {
         // Fetch full updated settings to propagate state
         const fullSettingsRes = await fetch(`${API}/settings`);
@@ -185,86 +194,7 @@ export default function Setup({ onComplete, isEdit }) {
             />
           </div>
 
-          {isEdit && (
-            <div style={{ marginTop: 'var(--space-6)', paddingTop: 'var(--space-6)', borderTop: '1.5px solid var(--glass-border)', textAlign: 'left' }}>
-              <h3 style={{ fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 'var(--space-4)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Zap size={16} color="var(--primary-500)" /> Subscription & Licensing
-              </h3>
-              
-              <div className="form-group">
-                <label className="form-label" htmlFor="setup-license-key">License Key</label>
-                <input
-                  id="setup-license-key"
-                  className="form-input"
-                  type="text"
-                  placeholder="e.g. QS-XXXX-XXXX"
-                  value={licenseKey}
-                  onChange={e => setLicenseKey(e.target.value)}
-                />
-              </div>
 
-              <div className="form-group" style={{ marginTop: 'var(--space-3)' }}>
-                <label className="form-label" htmlFor="setup-server-url">Licensing Server URL</label>
-                <input
-                  id="setup-server-url"
-                  className="form-input"
-                  type="url"
-                  placeholder="e.g. https://your-server.onrender.com/api/check"
-                  value={licenseServerUrl}
-                  onChange={e => setLicenseServerUrl(e.target.value)}
-                />
-              </div>
-
-
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface)', padding: 'var(--space-3) var(--space-4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', marginBottom: 'var(--space-4)', flexWrap: 'wrap', gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 600 }}>LICENSING STATUS</div>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    <span style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      background: licenseStatus === 'active' ? 'var(--success-500)' : ['suspended', 'expired', 'expired_offline', 'tampered'].includes(licenseStatus) ? 'var(--danger-500)' : 'var(--warning-500)',
-                      boxShadow: `0 0 8px ${licenseStatus === 'active' ? 'var(--success-500)' : ['suspended', 'expired', 'expired_offline', 'tampered'].includes(licenseStatus) ? 'var(--danger-500)' : 'var(--warning-500)'}`
-                    }}></span>
-                    <span style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: 'var(--fs-sm)', color: licenseStatus === 'active' ? 'var(--success-600)' : ['suspended', 'expired', 'expired_offline', 'tampered'].includes(licenseStatus) ? 'var(--danger-600)' : 'var(--warning-600)' }}>
-                      {licenseStatus === 'expired_offline' ? 'OFFLINE EXPIRED' : licenseStatus === 'tampered' ? 'TAMPERED' : licenseStatus}
-                    </span>
-                  </div>
-                </div>
-                
-                {licenseExpiry && (
-                  <div>
-                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 600 }}>EXPIRATION DATE</div>
-                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontWeight: 500, marginTop: 4 }}>
-                      {new Date(licenseExpiry).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </div>
-                  </div>
-                )}
-
-                {licenseLastChecked && (
-                  <div>
-                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 600 }}>LAST VERIFIED</div>
-                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontWeight: 500, marginTop: 4 }}>
-                      {new Date(licenseLastChecked).toLocaleString('en-IN')}
-                    </div>
-                  </div>
-                )}
-                
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={handleVerifyLicense}
-                  disabled={verifying || !licenseKey.trim()}
-                  id="setup-verify-license-btn"
-                  style={{ padding: '6px 12px', fontSize: 'var(--fs-xs)' }}
-                >
-                  {verifying ? 'Verifying...' : 'Verify License'}
-                </button>
-              </div>
-            </div>
-          )}
 
           <button
             type="submit"
